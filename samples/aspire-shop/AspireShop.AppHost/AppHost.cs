@@ -1,6 +1,4 @@
-﻿using AspireShop.AppHost.CustomCommands;
-
-var builder = DistributedApplication.CreateBuilder(args);
+﻿var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
@@ -16,15 +14,13 @@ var catalogDb = postgres.AddDatabase("catalogdb");
 
 var basketCache = builder.AddRedis("basketcache")
     .WithDataVolume()
-    .WithRedisCommander()
-    // Add a custom command to clear the cache
-    .WithClearCommand();
-
+    .WithRedisCommander();
+   
+    
 var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>("catalogdbmanager")
     .WithReference(catalogDb)
     .WaitFor(catalogDb)
-    .WithHttpHealthCheck("/health")
-    .WithHttpCommand("/reset-db", "Reset Database", commandOptions: new() { IconName = "DatabaseLightning" });
+    .WithHttpHealthCheck("/health");
 
 var catalogService = builder.AddProject<Projects.AspireShop_CatalogService>("catalogservice")
     .WithReference(catalogDb)
