@@ -19,8 +19,7 @@ var basketCache = builder.AddRedis("basketcache")
 var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>("catalogdbmanager")
     .WithReference(catalogDb)
     .WaitFor(catalogDb)
-    .WithHttpHealthCheck("/health")
-    .WithHttpCommand("/reset-db", "Reset Database", commandOptions: new() { IconName = "DatabaseLightning" });
+    .WithHttpHealthCheck("/health");
 
 var catalogService = builder.AddProject<Projects.AspireShop_CatalogService>("catalogservice")
     .WithReference(catalogDb)
