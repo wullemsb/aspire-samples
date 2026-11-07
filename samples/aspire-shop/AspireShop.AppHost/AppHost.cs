@@ -1,4 +1,6 @@
-﻿var builder = DistributedApplication.CreateBuilder(args);
+﻿using AspireShop.AppHost.CustomCommands;
+
+var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
@@ -14,7 +16,9 @@ var catalogDb = postgres.AddDatabase("catalogdb");
 
 var basketCache = builder.AddRedis("basketcache")
     .WithDataVolume()
-    .WithRedisCommander();
+    .WithRedisCommander()
+    // Add a custom command to clear the cache
+    .WithClearCommand();
 
 var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>("catalogdbmanager")
     .WithReference(catalogDb)
