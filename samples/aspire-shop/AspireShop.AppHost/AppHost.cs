@@ -1,4 +1,4 @@
-﻿using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.ApplicationModel;
 using AspireShop.AppHost.CustomCommands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -21,11 +21,11 @@ var catalogDb = postgres.AddDatabase("catalogdb");
 
 var basketCache = builder.AddRedis("basketcache")
     .WithDataVolume()
-    .WithRedisCommander()
-    // Add a custom command to clear the cache
-    .WithClearCommand();
-
+    .WithRedisCommander();
+   
+    
 var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>("catalogdbmanager")
+    .WithIconName("database")
     .WithReference(catalogDb)
     .WaitFor(catalogDb)
     .WithHttpHealthCheck("/health")
@@ -33,6 +33,7 @@ var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>(
 
 #pragma warning disable ASPIREPROCESSCOMMAND001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 var catalogService = builder.AddProject<Projects.AspireShop_CatalogService>("catalogservice")
+    .WithIconName("book")
     .WithReference(catalogDb)
     .WaitFor(catalogDbManager)
     .WithHttpHealthCheck("/health")
@@ -135,10 +136,12 @@ catalogService.WithCommand(
         });
 
 var basketService = builder.AddProject<Projects.AspireShop_BasketService>("basketservice")
+    .WithIconName("cart")
     .WithReference(basketCache)
     .WaitFor(basketCache);
 
 builder.AddProject<Projects.AspireShop_Frontend>("frontend")
+    .WithIconName("window")
     .WithExternalHttpEndpoints()
     .WithUrls(context =>
     {
