@@ -11,5 +11,8 @@
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.6.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.14" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CustomResources.ApiService\CustomResources.ApiService.csproj" />
+  </ItemGroup>
 
 </Project>

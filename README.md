@@ -95,7 +95,7 @@ Dev Containers and CI install the same CLI version automatically.
 | [Working with Database Containers](./samples/database-containers) | C#, SQL | C# AppHost | Run only | Initializes and uses PostgreSQL, MongoDB, and SQL Server containers. |
 | [Running EF Core Migrations](./samples/database-migrations) | C# | C# AppHost | Run only | Runs Entity Framework Core migrations inside Aspire workflows. |
 | [Persisting Data with Volume Mounts](./samples/volume-mount) | C# | C# AppHost | Run only | Demonstrates data persistence with containers, Azure Storage, and SQL Server. |
-| [Custom Aspire hosting resources](./samples/custom-resources) | C# | C# AppHost | Run only | Demonstrates authoring custom hosting resources with Aspire. |
+| [Custom Aspire hosting resources](./samples/custom-resources) | C# | C# AppHost | Run only | Authors custom resources, including a Scalar container that discovers OpenAPI documents. |
 
 ## eShop
 
