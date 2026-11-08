@@ -18,20 +18,24 @@ var basketCache = builder.AddRedis("basketcache")
    
     
 var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>("catalogdbmanager")
+    .WithIconName("database")
     .WithReference(catalogDb)
     .WaitFor(catalogDb)
     .WithHttpHealthCheck("/health");
 
 var catalogService = builder.AddProject<Projects.AspireShop_CatalogService>("catalogservice")
+    .WithIconName("book")
     .WithReference(catalogDb)
     .WaitFor(catalogDbManager)
     .WithHttpHealthCheck("/health");
 
 var basketService = builder.AddProject<Projects.AspireShop_BasketService>("basketservice")
+    .WithIconName("cart")
     .WithReference(basketCache)
     .WaitFor(basketCache);
 
 builder.AddProject<Projects.AspireShop_Frontend>("frontend")
+    .WithIconName("window")
     .WithExternalHttpEndpoints()
     .WithHttpHealthCheck("/health")
     .WithReference(basketService)
