@@ -11,11 +11,18 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
+if (builder.Environment.IsDevelopment())
+{
+    builder.Services.AddCors(options => options.AddPolicy("OpenApi", policy =>
+        policy.AllowAnyOrigin().WithMethods("GET","POST")));
+}
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseCors();
+    app.MapOpenApi().RequireCors("OpenApi");
     app.MapScalarApiReference();
 }
 else

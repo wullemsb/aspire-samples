@@ -1,3 +1,7 @@
+using System.Text.Json;
+
+namespace AspireShop.AppHost.CustomCommands
+{
 public sealed class ScalarResource(string name) : ContainerResource(name);
 
 public sealed record OpenApiAnnotation(EndpointReference Endpoint, string Path, string Title) : IResourceAnnotation;
@@ -69,9 +73,20 @@ public static class ScalarResourceBuilderExtensions
                         }
 
                         // Scalar fetches documents in the browser, not on the container network.
-                        var endpointUrl = await document.Endpoint.GetValueAsync(context.CancellationToken)
-                            ?? throw new InvalidOperationException($"The OpenAPI endpoint for resource '{resource.Name}' did not resolve to a URL.");
-                        sources.Add(new ScalarSource(document.Title, $"{endpointUrl.TrimEnd('/')}{document.Path}"));
+                        // var endpointUrl = await EndpointHostHelpers.GetUrlWithTargetHostAsync(
+                        //     document.Endpoint, context.CancellationToken)
+                        //     ?? throw new InvalidOperationException($"The OpenAPI endpoint for resource '{resource.Name}' did not resolve to a URL.");
+                        // sources.Add(new ScalarSource(document.Title, $"{endpointUrl.TrimEnd('/')}{document.Path}"));
+                        var browserUrl = resource.Annotations
+            .OfType<ResourceUrlAnnotation>()
+            .FirstOrDefault(url =>
+                url.Endpoint?.EndpointName == document.Endpoint.EndpointName &&
+                url.DisplayLocation == UrlDisplayLocation.SummaryAndDetails)
+            ?? throw new InvalidOperationException(
+                $"No browser-facing URL found for resource '{resource.Name}'.");
+
+        var documentUrl = new Uri(new Uri(browserUrl.Url), document.Path);
+        sources.Add(new ScalarSource(document.Title, documentUrl.AbsoluteUri));
                     }
                 }
 
@@ -87,4 +102,5 @@ public static class ScalarResourceBuilderExtensions
     }
 
     private sealed record ScalarSource(string Title, string Url);
+}
 }

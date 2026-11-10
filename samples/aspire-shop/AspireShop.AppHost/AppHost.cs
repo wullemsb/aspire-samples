@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using System.Globalization;
+using System.Text.Json;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -38,6 +39,7 @@ var catalogService = builder.AddProject<Projects.AspireShop_CatalogService>("cat
     .WithReference(catalogDb)
     .WaitFor(catalogDbManager)
     .WithHttpHealthCheck("/health")
+    .WithOpenApi(endpointName: "https", title: "Catalog API")
     .WithProcessCommand(
         commandName: "dotnet-version",
         displayName: "Show .NET version",
@@ -141,6 +143,11 @@ var basketService = builder.AddProject<Projects.AspireShop_BasketService>("baske
     .WithReference(basketCache)
     .WaitFor(basketCache);
 
+builder.AddScalar()
+    .WithIconName("balloon")
+    .WaitFor(basketService)
+    .WaitFor(catalogService);
+
 builder.AddProject<Projects.AspireShop_Frontend>("frontend")
     .WithIconName("window")
     .WithExternalHttpEndpoints()
@@ -160,7 +167,6 @@ builder.AddProject<Projects.AspireShop_Frontend>("frontend")
                 basketCache.Resource.Name,
                 "clear-cache",
                 context.CancellationToken);
-
             if (!clearCacheResult.Success)
             {
                 return clearCacheResult;

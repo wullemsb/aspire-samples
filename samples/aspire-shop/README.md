@@ -39,6 +39,8 @@ The Catalog service's **Retrieve products** resource command accepts a positive 
 
 ## Exporting the catalog OpenAPI document
 
+In Development, the Catalog service's OpenAPI document allows cross-origin GET requests so the separate Scalar UI can fetch it regardless of its assigned port. This CORS policy applies only to the OpenAPI endpoint, does not allow credentials, and does not enable cross-origin API calls from Scalar's "Try it" feature. It is not enabled in production.
+
 When running locally, the healthy Catalog service exposes an **Export catalog OpenAPI** command in the dashboard. It invokes `curl` on the AppHost machine to download the development-only `/openapi/v1.json` document using the service's current HTTP endpoint.
 
 Ensure `curl` 7.83 or newer is on the AppHost's `PATH` (Windows includes `curl.exe`). You can also invoke the command from this directory:
