@@ -115,8 +115,6 @@ public static class ScalarResourceBuilderExtensions
                                 $"OpenAPI document '{document.Title}' on resource '{resource.Name}' must reference an existing HTTP or HTTPS endpoint '{document.Endpoint.EndpointName}'.");
                         }
 
-                        if(builder.ExecutionContext.IsRunMode)
-                        {
                             var browserUrl = resource.Annotations
                                 .OfType<ResourceUrlAnnotation>()
                                 .FirstOrDefault(url =>
