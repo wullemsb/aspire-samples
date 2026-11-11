@@ -53,12 +53,99 @@ var catalogEndpoint = catalogService.GetEndpoint("http");
     catalogService.WithProcessCommand(
         commandName: "export-openapi",
         displayName: "Export catalog OpenAPI",
-        processSpecFactory: context =>
+        processSpecFactory: async context =>
         {
-            var exportDirectory = Path.Combine(builder.AppHostDirectory, "artifacts", "openapi");
-            Directory.CreateDirectory(exportDirectory);
+            var interactions = context.Services.GetRequiredService<IInteractionService>();
+            //Always check if the service is available!!
+            if (!interactions.IsAvailable)
+            {
+                throw new InvalidOperationException("Export catalog OpenAPI requires an interactive client. Run it from the Aspire dashboard.");
+            }
+
             var timestamp = DateTimeOffset.UtcNow.ToString("yyyyMMdd-HHmmss-fffffff", CultureInfo.InvariantCulture);
-            var outputPath = Path.Combine(exportDirectory, $"catalog-openapi-{timestamp}.json");
+            var result = await interactions.PromptInputsAsync(
+                "Export catalog OpenAPI",
+                "Choose a JSON filename and destination folder on the AppHost machine. Relative folders are resolved from the AppHost directory.",
+                [
+                    new InteractionInput
+                    {
+                        Name = "fileName",
+                        Label = "File name",
+                        InputType = InputType.Text,
+                        Required = true,
+                        Value = $"catalog-openapi-{timestamp}.json"
+                    },
+                    new InteractionInput
+                    {
+                        Name = "directory",
+                        Label = "Destination folder",
+                        InputType = InputType.Text,
+                        Required = true,
+                        Value = Path.Combine(builder.AppHostDirectory, "artifacts", "openapi")
+                    }
+                ],
+                new InputsDialogInteractionOptions
+                {
+                    ValidationCallback = validation =>
+                    {
+                        var fileName = validation.Inputs["fileName"].Value;
+                        var directory = validation.Inputs["directory"].Value;
+                        if (string.IsNullOrWhiteSpace(fileName)
+                            || fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0
+                            || fileName.Contains('/') || fileName.Contains('\\')
+                            || !fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
+                        {
+                            validation.AddValidationError("fileName", "Enter a valid filename ending in .json, without a folder path.");
+                            return Task.CompletedTask;
+                        }
+
+                        if (string.IsNullOrWhiteSpace(directory))
+                        {
+                            validation.AddValidationError("directory", "Enter a destination folder.");
+                            return Task.CompletedTask;
+                        }
+
+                        try
+                        {
+                            var fullDirectory = Path.GetFullPath(directory, builder.AppHostDirectory);
+                            var fullPath = Path.Combine(fullDirectory, fileName);
+                            if (File.Exists(fullDirectory))
+                            {
+                                validation.AddValidationError("directory", "The destination is a file, not a folder.");
+                            }
+                            else if (File.Exists(fullPath) || Directory.Exists(fullPath))
+                            {
+                                validation.AddValidationError("fileName", "This path already exists. Choose a different filename.");
+                            }
+                        }
+                        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+                        {
+                            validation.AddValidationError("directory", $"Invalid destination folder: {ex.Message}");
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                },
+                context.CancellationToken);
+
+            if (result.Canceled)
+            {
+                context.Logger.LogInformation("OpenAPI export canceled.");
+                throw new OperationCanceledException("OpenAPI export canceled.", context.CancellationToken);
+            }
+
+            var exportDirectory = Path.GetFullPath(
+                result.Data["directory"].Value ?? throw new InvalidOperationException("A destination folder is required."),
+                builder.AppHostDirectory);
+            var outputPath = Path.Combine(exportDirectory,
+                result.Data["fileName"].Value ?? throw new InvalidOperationException("A filename is required."));
+            context.CancellationToken.ThrowIfCancellationRequested();
+            if (File.Exists(outputPath) || Directory.Exists(outputPath))
+            {
+                throw new IOException($"The export destination already exists: {outputPath}");
+            }
+
+            Directory.CreateDirectory(exportDirectory);
             context.Logger.LogInformation("Exporting catalog OpenAPI to {OutputPath}.", outputPath);
 
             return new ProcessCommandSpec("curl")
@@ -90,10 +177,19 @@ var catalogEndpoint = catalogService.GetEndpoint("http");
 catalogService.WithCommand(
         name: "retrieve-products",
         displayName: "Retrieve products",
-        executeCommand: async context =>
+        executeCommand: async (context) =>
         {
+         var interactionService = context.Services.GetRequiredService<IInteractionService>();
+         using var cts = CancellationTokenSource.CreateLinkedTokenSource(context.CancellationToken);
+
             var brandId = context.Arguments.GetInt32("brandId");
             var path = $"/api/v1/catalog/items/type/all/brand/{brandId.ToString(CultureInfo.InvariantCulture)}";
+
+#pragma warning disable ASPIREINTERACTION001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+       
+            var progressTask = interactionService.PromptProgressAsync("Processing data...",cancellationToken: cts.Token);
+
+#pragma warning restore ASPIREINTERACTION001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
 
             try
             {
@@ -105,6 +201,9 @@ catalogService.WithCommand(
                 }
 
                 var json = await response.Content.ReadAsStringAsync(context.CancellationToken);
+                cts.Cancel(); // Cancel the progress prompt once the response is received
+                await progressTask;
+                
                 return CommandResults.Success(
                     message: "Products retrieved for brand " + brandId + ".",
                     result: json,

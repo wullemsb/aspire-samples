@@ -51,12 +51,12 @@ not published in publish mode.
 
 In Development, the Catalog service's OpenAPI document allows cross-origin GET requests so the separate Scalar UI can fetch it regardless of its assigned port. This CORS policy applies only to the OpenAPI endpoint, does not allow credentials, and does not enable cross-origin API calls from Scalar's "Try it" feature. It is not enabled in production.
 
-When running locally, the healthy Catalog service exposes an **Export catalog OpenAPI** command in the dashboard. It invokes `curl` on the AppHost machine to download the development-only `/openapi/v1.json` document using the service's current HTTP endpoint.
+When running locally, the healthy Catalog service exposes an **Export catalog OpenAPI** command in the dashboard. It uses Aspire's `IInteractionService` to ask for a `.json` filename and destination folder, then invokes `curl` on the AppHost machine to download the development-only `/openapi/v1.json` document using the service's current HTTP endpoint.
 
-Ensure `curl` 7.83 or newer is on the AppHost's `PATH` (Windows includes `curl.exe`). You can also invoke the command from this directory:
+Ensure `curl` 7.83 or newer is on the AppHost's `PATH` (Windows includes `curl.exe`). The command requires an interactive client; clients without interaction support receive an explicit error. From a CLI client with interaction support, invoke it from this directory:
 
 ```shell
 aspire resource catalogservice export-openapi
 ```
 
-Each export creates a timestamped `catalog-openapi-*.json` file under `AspireShop.AppHost/artifacts/openapi/`, which is ignored by Git. The command output shows its absolute path. Repeated exports preserve earlier files. HTTP errors and download failures fail the command, and downloads time out after 30 seconds.
+The prompt defaults to a timestamped `catalog-openapi-*.json` filename under `AspireShop.AppHost/artifacts/openapi/`, which is ignored by Git. You can change both values. Relative folders are resolved from the AppHost directory, and missing folders are created only after submitting the prompt. Paths refer to the AppHost machine, not the browser's machine. Existing destination files are rejected. Canceling the prompt does not start a download or create a folder. The command output shows the absolute destination path. HTTP errors and download failures fail the command, and downloads time out after 30 seconds.
