@@ -1,5 +1,0 @@
-<Solution>
-  <Project Path="api/Notes.Api.csproj" />
-  <Project Path="ServiceDefaults/ServiceDefaults.csproj" />
-  <Project Path="tests/Notes.Tests.csproj" />
-</Solution>
