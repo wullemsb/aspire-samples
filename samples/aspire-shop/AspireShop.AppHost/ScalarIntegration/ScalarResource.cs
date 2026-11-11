@@ -82,10 +82,10 @@ public static class ScalarResourceBuilderExtensions
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        if (builder.ExecutionContext.IsPublishMode)
-        {
-            return builder.CreateResourceBuilder(new ScalarResource(name));
-        }
+        // if (builder.ExecutionContext.IsPublishMode)
+        // {
+        //     return builder.CreateResourceBuilder(new ScalarResource(name));
+        // }
 
         var existing = builder.Resources.OfType<ScalarResource>().SingleOrDefault();
         if (existing is not null)
@@ -115,22 +115,20 @@ public static class ScalarResourceBuilderExtensions
                                 $"OpenAPI document '{document.Title}' on resource '{resource.Name}' must reference an existing HTTP or HTTPS endpoint '{document.Endpoint.EndpointName}'.");
                         }
 
-                        // Scalar fetches documents in the browser, not on the container network.
-                        // var endpointUrl = await EndpointHostHelpers.GetUrlWithTargetHostAsync(
-                        //     document.Endpoint, context.CancellationToken)
-                        //     ?? throw new InvalidOperationException($"The OpenAPI endpoint for resource '{resource.Name}' did not resolve to a URL.");
-                        // sources.Add(new ScalarSource(document.Title, $"{endpointUrl.TrimEnd('/')}{document.Path}"));
-                        var browserUrl = resource.Annotations
-            .OfType<ResourceUrlAnnotation>()
-            .FirstOrDefault(url =>
-                url.Endpoint?.EndpointName == document.Endpoint.EndpointName &&
-                url.DisplayLocation == UrlDisplayLocation.SummaryAndDetails)
-            ?? throw new InvalidOperationException(
-                $"No browser-facing URL found for resource '{resource.Name}'.");
+                        if(builder.ExecutionContext.IsRunMode)
+                        {
+                            var browserUrl = resource.Annotations
+                                .OfType<ResourceUrlAnnotation>()
+                                .FirstOrDefault(url =>
+                                    url.Endpoint?.EndpointName == document.Endpoint.EndpointName &&
+                                    url.DisplayLocation == UrlDisplayLocation.SummaryAndDetails)
+                                ?? throw new InvalidOperationException(
+                                    $"No browser-facing URL found for resource '{resource.Name}'.");
 
         var documentUrl = new Uri(new Uri(browserUrl.Url), document.Path);
         sources.Add(new ScalarEndpoint(document.Title, documentUrl.AbsoluteUri));
                     }
+                    
                 }
 
                 if (sources.Count == 0)

@@ -1,4 +1,4 @@
-using Aspire.Hosting.ApplicationModel;
+﻿using Aspire.Hosting.ApplicationModel;
 using AspireShop.AppHost.CustomCommands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -187,5 +187,8 @@ builder.AddProject<Projects.AspireShop_Frontend>("frontend")
     .WithReference(basketService)
     .WithReference(catalogService)
     .WaitFor(catalogService);
+
+//var k8s = builder.AddKubernetesEnvironment("k8s");
+var compose = builder.AddDockerComposeEnvironment("compose");
 
 builder.Build().Run();
