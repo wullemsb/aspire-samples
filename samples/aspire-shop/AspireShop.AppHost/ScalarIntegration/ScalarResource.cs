@@ -1,3 +1,7 @@
+using Aspire.Hosting.Eventing;
+using Aspire.Hosting.Lifecycle;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace AspireShop.AppHost.CustomCommands
@@ -5,6 +9,42 @@ namespace AspireShop.AppHost.CustomCommands
 public sealed class ScalarResource(string name) : ContainerResource(name);
 
 public sealed record OpenApiAnnotation(EndpointReference Endpoint, string Path, string Title) : IResourceAnnotation;
+
+public sealed record ScalarEndpoint(string Title, string Url);
+
+public sealed record ScalarEndpointsDiscoveredEvent(
+    ScalarResource Resource,
+    IReadOnlyList<ScalarEndpoint> Endpoints) : IDistributedApplicationEvent;
+
+public sealed class ScalarEndpointLogger(ResourceNotificationService notification, ResourceLoggerService loggerService) : IDistributedApplicationEventingSubscriber
+{
+    public Task SubscribeAsync(
+        IDistributedApplicationEventing eventing,
+        DistributedApplicationExecutionContext executionContext,
+        CancellationToken cancellationToken)
+    {
+        if (executionContext.IsRunMode)
+        {
+            eventing.Subscribe<ScalarEndpointsDiscoveredEvent>(async (@event, token) =>
+            {
+                var logger = loggerService.GetLogger(@event.Resource);
+                logger.LogCritical("Scalar discovered {Count} OpenAPI endpoint(s).", @event.Endpoints.Count);
+
+                foreach (var endpoint in @event.Endpoints)
+                {
+                    logger.LogCritical("OpenAPI endpoint {Title}: {Url}", endpoint.Title, endpoint.Url);
+
+                    await notification.PublishUpdateAsync(@event.Resource, s => s with
+                    {
+                        State = new ResourceStateSnapshot("Endpoints discovered", KnownResourceStateStyles.Info)             
+                    });
+                }
+            });
+        }
+
+        return Task.CompletedTask;
+    }
+}
 
 public static class ScalarResourceBuilderExtensions
 {
@@ -53,14 +93,17 @@ public static class ScalarResourceBuilderExtensions
             return builder.CreateResourceBuilder(existing);
         }
 
-        return builder.AddResource(new ScalarResource(name))
+        builder.Services.TryAddEventingSubscriber<ScalarEndpointLogger>();
+
+        var scalar = new ScalarResource(name);
+        return builder.AddResource(scalar)
             .WithImage("scalarapi/api-reference", "0.6.22")
             .WithImageRegistry("docker.io")
             .WithHttpEndpoint(targetPort: 8080, port: port)
             .WithHttpHealthCheck("/health")
             .WithEnvironment(async context =>
             {
-                var sources = new List<ScalarSource>();
+                var sources = new List<ScalarEndpoint>();
 
                 foreach (var resource in builder.Resources)
                 {
@@ -86,7 +129,7 @@ public static class ScalarResourceBuilderExtensions
                 $"No browser-facing URL found for resource '{resource.Name}'.");
 
         var documentUrl = new Uri(new Uri(browserUrl.Url), document.Path);
-        sources.Add(new ScalarSource(document.Title, documentUrl.AbsoluteUri));
+        sources.Add(new ScalarEndpoint(document.Title, documentUrl.AbsoluteUri));
                     }
                 }
 
@@ -97,10 +140,15 @@ public static class ScalarResourceBuilderExtensions
 
                 context.EnvironmentVariables["API_REFERENCE_CONFIG"] =
                     JsonSerializer.Serialize(new { sources }, JsonSerializerOptions.Web);
+
+                await context.ExecutionContext.Services
+                    .GetRequiredService<IDistributedApplicationEventing>()
+                    .PublishAsync(
+                        new ScalarEndpointsDiscoveredEvent(scalar, sources.AsReadOnly()),
+                        context.CancellationToken);
             })
             .ExcludeFromManifest();
     }
 
-    private sealed record ScalarSource(string Title, string Url);
 }
 }

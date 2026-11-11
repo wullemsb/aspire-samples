@@ -37,6 +37,16 @@ If using the .NET CLI, run `dotnet run` from the `AspireShop.AppHost` directory.
 
 The Catalog service's **Retrieve products** resource command accepts a positive brand ID and returns the first page of matching products as JSON (up to eight items).
 
+## Scalar endpoint discovery event
+
+When Scalar prepares its configuration locally, it publishes a `ScalarEndpointsDiscoveredEvent`
+containing the discovered OpenAPI titles and browser-facing document URLs. The
+`ScalarEndpointLogger` implements `IDistributedApplicationEventingSubscriber` and is
+registered by `AddScalar()` using `TryAddEventingSubscriber`. It lists those endpoints
+in the Scalar resource's console logs in the Aspire dashboard. The event is published
+each time the environment configuration is evaluated, including on restarts; it is
+not published in publish mode.
+
 ## Exporting the catalog OpenAPI document
 
 In Development, the Catalog service's OpenAPI document allows cross-origin GET requests so the separate Scalar UI can fetch it regardless of its assigned port. This CORS policy applies only to the OpenAPI endpoint, does not allow credentials, and does not enable cross-origin API calls from Scalar's "Try it" feature. It is not enabled in production.
