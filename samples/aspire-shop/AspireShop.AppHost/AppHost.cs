@@ -24,7 +24,8 @@ var basketCache = builder.AddRedis("basketcache")
     .WithDataVolume()
     .WithRedisCommander()
     // Add a custom command to clear the cache
-    .WithClearCommand();
+    .WithClearCommand()
+    .WithRepl();
     
 var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>("catalogdbmanager")
     .WithIconName("database")
@@ -187,6 +188,29 @@ builder.AddProject<Projects.AspireShop_Frontend>("frontend")
     .WithReference(basketService)
     .WithReference(catalogService)
     .WaitFor(catalogService);
+
+  builder.AddExecutable("dotnetruntime", "dotnet", "./")
+                   .WithCommand("dotnet-repl","dotnet repl", async context => {
+
+                       // Step 1: Get the terminal service.
+#pragma warning disable ASPIRETERMINAL001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+                       var ts = context.Services.GetRequiredService<TerminalService>();
+#pragma warning restore ASPIRETERMINAL001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+
+                       // Step 2: Create and start the terminal.
+                       var terminal = ts.CreateTerminal(new ()
+                        {
+                            Title = "dotnet-repl",
+                            Executable = "dotnet",
+                            Arguments = ["nuget"]
+                        });
+                        terminal.Start();
+
+                        // Show it in the dock.
+                        terminal.Show();
+
+                       return new ExecuteCommandResult { Success = true };
+                   });
 
 //var k8s = builder.AddKubernetesEnvironment("k8s");
 var compose = builder.AddDockerComposeEnvironment("compose");
