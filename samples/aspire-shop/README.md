@@ -37,6 +37,8 @@ If using the .NET CLI, run `dotnet run` from the `AspireShop.AppHost` directory.
 
 The Catalog service's **Retrieve products** resource command accepts a positive brand ID and returns the first page of matching products as JSON (up to eight items).
 
+The Frontend's **Reset Shop State** command uses `IInteractionService` to ask for confirmation before clearing Redis and recreating the catalog database. Select **Reset** to proceed or **Cancel** to leave the shop unchanged. If interactive confirmation is unavailable, the command fails without changing any data.
+
 ## Scalar endpoint discovery event
 
 When Scalar prepares its configuration locally, it publishes a `ScalarEndpointsDiscoveredEvent`

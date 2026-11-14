@@ -261,6 +261,32 @@ builder.AddProject<Projects.AspireShop_Frontend>("frontend")
         displayName: "Reset Shop State",
         executeCommand: async context =>
         {
+            var interactions = context.Services.GetRequiredService<IInteractionService>();
+            if (!interactions.IsAvailable)
+            {
+                const string message = "Reset Shop State requires an interactive client. Run it from the Aspire dashboard.";
+                context.Logger.LogWarning("{Message}", message);
+                return CommandResults.Failure(message);
+            }
+
+            var confirmation = await interactions.PromptConfirmationAsync(
+                title: "Reset Shop State",
+                message: "This clears the Redis cache and deletes and recreates the catalog database. Continue?",
+                options: new MessageBoxInteractionOptions
+                {
+                    Intent = MessageIntent.Confirmation,
+                    PrimaryButtonText = "Reset",
+                    SecondaryButtonText = "Cancel",
+                    ShowSecondaryButton = true
+                },
+                cancellationToken: context.CancellationToken);
+
+            if (confirmation.Canceled || !confirmation.Data)
+            {
+                context.Logger.LogInformation("Shop state reset canceled.");
+                return CommandResults.Failure("Shop state reset canceled. No changes were made.");
+            }
+
             var commands = context.Services.GetRequiredService<ResourceCommandService>();
             var clearCacheResult = await commands.ExecuteCommandAsync(
                 basketCache.Resource.Name,
@@ -279,8 +305,7 @@ builder.AddProject<Projects.AspireShop_Frontend>("frontend")
         commandOptions: new()
         {
             IconName = "ArrowReset",
-            IsHighlighted = true,
-            ConfirmationMessage = "This clears the Redis cache and deletes and recreates the catalog database. Continue?"
+            IsHighlighted = true
         })
     .WithHttpHealthCheck("/health")
     .WithReference(basketService)
