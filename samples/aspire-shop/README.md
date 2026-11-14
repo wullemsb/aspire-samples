@@ -60,3 +60,33 @@ aspire resource catalogservice export-openapi
 ```
 
 Each export creates a timestamped `catalog-openapi-*.json` file under `AspireShop.AppHost/artifacts/openapi/`, which is ignored by Git. The command output shows its absolute path. Repeated exports preserve earlier files. HTTP errors and download failures fail the command, and downloads time out after 30 seconds.
+
+## Linting OpenAPI in a custom terminal
+
+On Windows, the Catalog service's **Open Spectral terminal** command opens an interactive shell in the dashboard's terminal dock. This demonstrates creating your own terminal with `TerminalService`, rather than attaching `WithTerminal()` to the API's server process. [Spectral](https://github.com/stoplightio/spectral) is a one-shot JSON/YAML linter; the shell stays open so you can run it repeatedly with different options.
+
+Install Node.js 22 or 24+ with npm, ensuring both are on the AppHost's `PATH`. Before starting the shop, install the pinned local CLI from this sample directory:
+
+```powershell
+cd .\AspireShop.AppHost\Spectral
+npm.cmd ci
+```
+
+No global Spectral installation is needed, and opening the terminal never installs or downloads packages. If dependencies are missing, the command reports the setup step instead of opening a nonfunctional terminal.
+
+Start the app in Development, wait for `catalogservice` to become healthy, then select **Open Spectral terminal** from its resource commands. In the docked `cmd.exe` shell, run:
+
+```batch
+npm run lint:catalog
+npm run lint:catalog -- --fail-severity warn
+npm run --silent lint:catalog -- --format json
+echo %ERRORLEVEL%
+```
+
+The command sets `CATALOG_OPENAPI_URL` to the service's current HTTP `/openapi/v1.json` URL and opens the shell in [AspireShop.AppHost/Spectral](./AspireShop.AppHost/Spectral). HTTP is intentional for local linting: Node.js does not need to trust the ASP.NET Core development HTTPS certificate. The document is only available in Development. Reopen the terminal if the service's endpoint changes.
+
+The local [.spectral.yaml](./AspireShop.AppHost/Spectral/.spectral.yaml) extends Spectral's standard OpenAPI rules. Existing style-guide findings are expected; the sample does not change the API or suppress rules to make linting pass. Edit the ruleset and rerun to explore your own API guidelines. By default, errors cause a nonzero exit code; `--fail-severity warn` also fails on warnings. JSON mode emits a diagnostic array, and `--silent` removes npm's script banner. Check `%ERRORLEVEL%` immediately after the command whose result you want.
+
+Lint failures do not close the shell, and successfully opening the terminal does not mean the API passed linting. Each invocation opens a separate session. Type `exit` when finished; closing its dock tab or shutting down the AppHost also disposes the terminal. Closing a detached viewer is not the same as disposing the session.
+
+This command is local-run-only and Windows-only. It uses experimental Aspire terminal APIs (`ASPIRETERMINAL001`). The shell runs on the AppHost machine with the AppHost user's permissions, not inside a container or sandbox, so expose the dashboard only to trusted users.

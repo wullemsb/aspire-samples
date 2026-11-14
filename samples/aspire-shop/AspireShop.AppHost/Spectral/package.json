@@ -1,0 +1,13 @@
+{
+  "name": "aspire-shop-spectral",
+  "private": true,
+  "engines": {
+    "node": "^22.0 || >=24.0"
+  },
+  "scripts": {
+    "lint:catalog": "spectral lint \"%CATALOG_OPENAPI_URL%\" --ruleset .spectral.yaml"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "6.17.1"
+  }
+}

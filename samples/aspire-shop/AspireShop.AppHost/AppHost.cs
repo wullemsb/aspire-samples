@@ -50,6 +50,71 @@ var catalogService = builder.AddProject<Projects.AspireShop_CatalogService>("cat
 
 var catalogEndpoint = catalogService.GetEndpoint("http");
 
+if (builder.ExecutionContext.IsRunMode && OperatingSystem.IsWindows())
+{
+#pragma warning disable ASPIRETERMINAL001
+    catalogService.WithCommand(
+        name: "open-spectral-terminal",
+        displayName: "Open Spectral terminal",
+        executeCommand: async context =>
+        {
+            var workingDirectory = Path.Combine(builder.AppHostDirectory, "Spectral");
+            if (!File.Exists(Path.Combine(workingDirectory, "node_modules", ".bin", "spectral.cmd")))
+            {
+                var message = $"Spectral is not installed. Run 'npm ci' in '{workingDirectory}' and try again.";
+                context.Logger.LogError("{Message}", message);
+                return CommandResults.Failure(message);
+            }
+
+            var terminals = context.Services.GetRequiredService<TerminalService>();
+            var terminal = terminals.CreateTerminal(new TerminalLaunchOptions
+            {
+                Title = "Spectral - Catalog API",
+                Executable = "cmd.exe",
+                Arguments =
+                [
+                    "/D", "/K",
+                    "where node >nul 2>nul && where npm.cmd >nul 2>nul"
+                    + " && node node_modules\\@stoplight\\spectral-cli\\dist\\index.js --version"
+                    + " && echo Run npm run lint:catalog to lint the live Catalog OpenAPI document."
+                    + " && echo Type exit to close this shell."
+                    + " && echo Spectral terminal ready."
+                ],
+                WorkingDirectory = workingDirectory,
+                EnvironmentVariables =
+                {
+                    ["CATALOG_OPENAPI_URL"] = new Uri(new Uri(catalogEndpoint.Url), "/openapi/v1.json").AbsoluteUri
+                },
+                Placement = TerminalPlacement.Dock
+            });
+
+            try
+            {
+                terminal.Start();
+                terminal.Show();
+                await terminal.WaitForTextAsync("Spectral terminal ready.", TimeSpan.FromSeconds(20), context.CancellationToken);
+                // The dock session outlives this callback; TerminalService owns its cleanup.
+                return CommandResults.Success();
+            }
+            catch (Exception ex) when (ex is TimeoutException or OperationCanceledException or InvalidOperationException)
+            {
+                await terminal.DisposeAsync();
+                context.Logger.LogError(ex, "Could not open the Spectral terminal.");
+                return CommandResults.Failure(ex is OperationCanceledException
+                    ? "Opening the Spectral terminal was canceled."
+                    : $"Could not open the Spectral terminal. Ensure Node.js and npm are on the AppHost's PATH. {ex.Message}");
+            }
+        },
+        commandOptions: new CommandOptions
+        {
+            IconName = "Code",
+            UpdateState = context => context.ResourceSnapshot.HealthStatus is HealthStatus.Healthy
+                ? ResourceCommandState.Enabled
+                : ResourceCommandState.Disabled
+        });
+#pragma warning restore ASPIRETERMINAL001
+}
+
 #pragma warning disable ASPIREPROCESSCOMMAND001
     catalogService.WithProcessCommand(
         commandName: "export-openapi",
@@ -188,29 +253,6 @@ builder.AddProject<Projects.AspireShop_Frontend>("frontend")
     .WithReference(basketService)
     .WithReference(catalogService)
     .WaitFor(catalogService);
-
-  builder.AddExecutable("dotnetruntime", "dotnet", "./")
-                   .WithCommand("dotnet-repl","dotnet repl", async context => {
-
-                       // Step 1: Get the terminal service.
-#pragma warning disable ASPIRETERMINAL001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-                       var ts = context.Services.GetRequiredService<TerminalService>();
-#pragma warning restore ASPIRETERMINAL001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
-
-                       // Step 2: Create and start the terminal.
-                       var terminal = ts.CreateTerminal(new ()
-                        {
-                            Title = "dotnet-repl",
-                            Executable = "dotnet",
-                            Arguments = ["nuget"]
-                        });
-                        terminal.Start();
-
-                        // Show it in the dock.
-                        terminal.Show();
-
-                       return new ExecuteCommandResult { Success = true };
-                   });
 
 //var k8s = builder.AddKubernetesEnvironment("k8s");
 var compose = builder.AddDockerComposeEnvironment("compose");
