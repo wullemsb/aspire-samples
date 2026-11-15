@@ -32,6 +32,7 @@ var catalogDbManager = builder.AddProject<Projects.AspireShop_CatalogDbManager>(
     .WithReference(catalogDb)
     .WaitFor(catalogDb)
     .WithHttpHealthCheck("/health")
+    .WithOpenApi(endpointName: "https", title: "Catalog DB Manager API")
     .WithHttpCommand("/reset-db", "Reset Database", commandName: "reset-db", commandOptions: new() { IconName = "DatabaseLightning", ResultMode = HttpCommandResultMode.Auto, IsHighlighted = true });
 
 #pragma warning disable ASPIREPROCESSCOMMAND001 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.

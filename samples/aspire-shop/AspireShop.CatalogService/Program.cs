@@ -30,7 +30,7 @@ else
     app.UseExceptionHandler();
 }
 
-app.MapCatalogApi();
+app.MapCatalogApi().RequireCors("OpenApi");
 app.MapDefaultEndpoints();
 
 app.Run();
