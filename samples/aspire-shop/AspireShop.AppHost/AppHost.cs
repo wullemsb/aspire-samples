@@ -1,4 +1,5 @@
 ﻿using Aspire.Hosting.ApplicationModel;
+using Aspire.Hosting.AspireC4.EntityFrameworkCore.D2;
 using AspireShop.AppHost.CustomCommands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -7,6 +8,10 @@ using System.Globalization;
 using System.Text.Json;
 
 var builder = DistributedApplication.CreateBuilder(args);
+
+builder.AddAspireC4()
+       .WithEntityFrameworkDiagram(configure: options => options
+           .LayoutEngine = D2LayoutEngine.Elk);
 
 var postgres = builder.AddPostgres("postgres")
     .WithPgAdmin()
